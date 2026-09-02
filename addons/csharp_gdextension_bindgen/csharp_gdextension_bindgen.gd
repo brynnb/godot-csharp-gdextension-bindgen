@@ -713,8 +713,15 @@ static func _generate_strings_class(cls_name: StringName, string_name_type: Stri
 			continue
 		if string_name_type == StringNameType.SIGNAL_NAME and ClassDB.class_has_signal(parent_class, name):
 			continue
-		lines.append("public static readonly StringName {cs_name} = \"{name}\";".format({
+		var hides_parent_property = false
+		if string_name_type == StringNameType.PROPERTY_NAME:
+			for property in ClassDB.class_get_property_list(parent_class):
+				if property["name"] == name:
+					hides_parent_property = true
+					break
+		lines.append("public static {maybe_new}readonly StringName {cs_name} = \"{name}\";".format({
 			cs_name = name.to_pascal_case(),
+			maybe_new = "new " if hides_parent_property else "",
 			name = name,
 		}))
 	return """
