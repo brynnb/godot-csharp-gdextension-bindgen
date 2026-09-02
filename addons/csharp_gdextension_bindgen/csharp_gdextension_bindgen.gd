@@ -488,7 +488,7 @@ static func _generate_signal(cls_name: StringName, sig: Dictionary):
 
 	var arg_types = PackedStringArray()
 	for argument in sig["args"]:
-		var arg_type = _get_property_type(cls_name, argument)
+		var arg_type = _get_signal_argument_type(cls_name, argument)
 		arg_types.append(arg_type)
 
 	var delegate_type
@@ -525,6 +525,19 @@ static func _generate_signal(cls_name: StringName, sig: Dictionary):
 
 static func _property_is_enum(property: Dictionary) -> bool:
 	return property["usage"] & (PROPERTY_USAGE_CLASS_IS_ENUM | PROPERTY_USAGE_CLASS_IS_BITFIELD)
+
+
+static func _get_signal_argument_type(cls_name: StringName, argument: Dictionary) -> String:
+	# Godot's Callable marshaller only supports GodotObject-derived managed
+	# types. Generated extension wrappers intentionally use composition, so a
+	# native extension object cannot be marshalled directly into its wrapper.
+	# Expose that signal argument as GodotObject; callers can explicitly cast it
+	# through Variant to the generated wrapper when desired.
+	if argument["type"] == TYPE_OBJECT:
+		var native_class: StringName = argument["class_name"]
+		if ClassDB.class_exists(native_class) and _is_extension_class(native_class):
+			return "GodotObject"
+	return _get_property_type(cls_name, argument)
 
 
 static func _get_property_type(cls_name: StringName, property: Dictionary) -> String:
